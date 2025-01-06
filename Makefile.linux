@@ -1,0 +1,57 @@
+CC				=clang-19
+C++				=clang++-19
+CLINKER			=mold
+
+INCLUDE_DIRS	+= -I$(HOME)/tracy/public -I$(HOME)/tracy/public/tracy
+
+# INCLUDE_DIRS	+= -Isrc/renderer/opengl
+
+LIBS			+=-lGL -lglfw -lvulkan -lwayland-client -lxkbcommon -lm
+
+GLFW3			=1
+CDEFINES		+=-DPLATFORM_LINUX
+CDEFINES		+=-D_POSIX_C_SOURCE=199309L
+CDEFINES		+=-DYGLFW3
+
+IMGUI_FILES		=$(shell $(MYFIND) $(IMGUI_DIR) -type f -name '*.cpp')
+IMGUI_OBJS		=$(patsubst $(IMGUI_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(IMGUI_FILES))
+
+C_OBJS			+= $(LINUX_OBJS) $(VULKAN_OBJS)
+OUTPUT			=$(NAME)
+
+DEBUG_LEVEL =-ggdb3
+
+ifeq ($(TRACY_USE),ON)
+	LIBS			+= -lc++
+	LIB_PATH		+= -L/usr/lib/x86_64-unknown-linux-gnu
+	INCLUDE_DIRS	+= -I/usr/include/x86_64-unknown-linux-gnu/c++/v1
+endif
+
+############################## COLORS ###################################
+NC=\033[0m
+BOLD=\033[1m
+UNDER=\033[4m
+REV=\033[7m
+
+GREY=\033[0;30m
+RED=\033[0;31m
+GREEN=\033[0;32m
+YELLOW=\033[0;33m
+BLUE=\033[0;34m
+PURPLE=\033[0;35m
+CYAN=\033[0;36m
+WHITE=\033[0;37m
+
+NC=
+BOLD=
+UNDER=
+REV=
+
+GREY=
+RED=
+GREEN=
+YELLOW=
+BLUE=
+PURPLE=
+CYAN=
+WHITE=
