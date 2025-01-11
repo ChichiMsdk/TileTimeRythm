@@ -6,22 +6,22 @@
 #include <unistd.h>
 #include <stdarg.h>
 
-#define	cbDEFAULT_STRING_ALLOCATION_SIZE	500
-#define	cbMAX_RULES 100
+#define		DEFAULT_STRING_ALLOCATION_SIZE	500
+#define		MAX_RULES 100
 
 typedef uint8_t U8;
 
 #if defined(_WIN32) || defined(_WIN64)
-    #define cbPLATFORM_WINDOWS
+    #define PLATFORM_WINDOWS
     #include <windows.h>
 #elif defined(__linux__) || defined(__APPLE__) && defined(__MACH__)
 	#if defined(__linux__)
-		#define cbPLATFORM_LINUX
+		#define PLATFORM_LINUX
 	#elif defined(__APPLE__) && defined(__MACH__)
-		#define cbPLATFORM_MACOS
+		#define PLATFORM_MACOS
 	#endif
 
-    #define cbPLATFORM_UNIX
+    #define PLATFORM_UNIX
     #include <sys/types.h>
     #include <sys/wait.h>
     #include <unistd.h>
@@ -30,43 +30,43 @@ typedef uint8_t U8;
 #endif
 
 
-typedef struct cbString
+typedef struct String
 {
 	char *c_str;              // Pointer to the character array
 	unsigned int length;      // Current length of the string
 	unsigned int size;        // Allocated size of the string buffer
-} cbString;
+} String;
 
-typedef cbString cbCommand;
+typedef String Command;
 
-typedef void(*cbRuleFunction)(void);
-typedef struct cbRule
+typedef void(*RuleFunction)(void);
+typedef struct Rule
 {
 	char			*name;
-	cbRuleFunction	function;
-} cbRule;
+	RuleFunction	function;
+} Rule;
 
-cbRule cbRules[cbMAX_RULES];
-int	cbRuleCount;
+Rule Rules[MAX_RULES];
+int	RuleCount;
 
 
-void cbCreateRule(const char *ruleName, cbRuleFunction function)
+void CreateRule(const char *ruleName, RuleFunction function)
 {
-	if (cbRuleCount >= cbMAX_RULES)
+	if (RuleCount >= MAX_RULES)
 		return;
-	cbRules[cbRuleCount].name = strdup(ruleName);
-	cbRules[cbRuleCount].function = function;
-	cbRuleCount++;
+	Rules[RuleCount].name = strdup(ruleName);
+	Rules[RuleCount].function = function;
+	RuleCount++;
 }
 
-U8 cbExecuteRule(const char *rule)
+U8 ExecuteRule(const char *rule)
 {
-	for (int i = 0; i < cbRuleCount; i++)
+	for (int i = 0; i < RuleCount; i++)
 	{
-		if (strcmp(cbRules[i].name, rule) == 0)
+		if (strcmp(Rules[i].name, rule) == 0)
 		{
-			printf("Executing rule %s\n", cbRules[i].name);
-			cbRules[i].function();
+			printf("Executing rule %s\n", Rules[i].name);
+			Rules[i].function();
 			return 1;
 		}
 	}
@@ -74,20 +74,20 @@ U8 cbExecuteRule(const char *rule)
 }
 
 
-cbString *cbCreateString(void)
+String *CreateString(void)
 {
-	cbString *string = (cbString *)malloc(sizeof(cbString)); // Allocate memory for cbString structure
-	string->c_str = (char *)malloc(cbDEFAULT_STRING_ALLOCATION_SIZE * sizeof(char));
+	String *string = (String *)malloc(sizeof(String)); // Allocate memory for String structure
+	string->c_str = (char *)malloc(DEFAULT_STRING_ALLOCATION_SIZE * sizeof(char));
 	string->length = 0;
-	string->size = cbDEFAULT_STRING_ALLOCATION_SIZE;
+	string->size = DEFAULT_STRING_ALLOCATION_SIZE;
 	string->c_str[0] = '\0';
 
 	return string;
 }
-#define cbCreateCommand cbCreateString
+#define CreateCommand CreateString
 
 
-void cbAppendToString(cbString *str, const char *element)
+void AppendToString(String *str, const char *element)
 {
 	if (!str || !element) return;
 
@@ -111,7 +111,7 @@ void cbAppendToString(cbString *str, const char *element)
 	str->c_str[str->length] = '\0';
 }
 
-void cbAppendToCommandNULL(cbCommand *command, ...)
+void AppendToCommandNULL(Command *command, ...)
 {
     if (!command) return;
 
@@ -123,18 +123,18 @@ void cbAppendToCommandNULL(cbCommand *command, ...)
     {
         if (command->length > 0)
         {
-            cbAppendToString(command, " ");
+            AppendToString(command, " ");
         }
 
-        cbAppendToString(command, arg);
+        AppendToString(command, arg);
         arg = va_arg(args, const char *);
     }
     va_end(args);
 }
-#define cbAppendToCommand(command, ...) cbAppendToCommandNULL(command, __VA_ARGS__, NULL)
+#define AppendToCommand(command, ...) AppendToCommandNULL(command, __VA_ARGS__, NULL)
 
 
-int cbExecuteCommand(const cbCommand *command)
+int ExecuteCommand(const Command *command)
 {
     if (!command || !command->c_str)
     {
@@ -143,12 +143,12 @@ int cbExecuteCommand(const cbCommand *command)
     }
 
 	printf("[CMD] : %s\n", command->c_str);
-#ifdef cbPLATFORM_WINDOWS
+#ifdef PLATFORM_WINDOWS
     // On Windows, use CreateProcess
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
+    si. = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
     // Create a mutable buffer for the command string
@@ -162,7 +162,7 @@ int cbExecuteCommand(const cbCommand *command)
     // Execute the command
     if (!CreateProcess(NULL, cmdBuffer, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
     {
-        fprintf(stderr, "cbCommand execution failed: %lu\n", GetLastError());
+        fprintf(stderr, "Command execution failed: %lu\n", GetLastError());
         free(cmdBuffer);
         return -1;
     }
@@ -175,7 +175,7 @@ int cbExecuteCommand(const cbCommand *command)
     CloseHandle(pi.hThread);
     free(cmdBuffer);
 
-#elif defined(cbPLATFORM_UNIX)
+#elif defined(PLATFORM_UNIX)
     // On Unix-like systems, use fork and exec
     pid_t pid = fork();
     if (pid < 0)
@@ -205,18 +205,18 @@ int cbExecuteCommand(const cbCommand *command)
 }
 
 
-void cbRebuildSelf(void)
+void RebuildSelf(void)
 {
-    cbCommand *selfBuildCmd = cbCreateCommand();
+    Command *selfBuildCmd = CreateCommand();
 
-#ifdef cbPLATFORM_WINDOWS
-    cbAppendToCommand(selfBuildCmd, "gcc", "-o", "CBuilder.exe", "CBuilder.c");
+#ifdef PLATFORM_WINDOWS
+    AppendToCommand(selfBuildCmd, "gcc", "-o", "CBuilder.exe", "CBuilder.c");
 #else
-    cbAppendToCommand(selfBuildCmd, "gcc", "-o", "CBuilder", "CBuilder.c");
+    AppendToCommand(selfBuildCmd, "gcc", "-o", "CBuilder", "CBuilder.c");
 #endif
     printf("Rebuilding CBuilder: %s\n", selfBuildCmd->c_str);
 
-    int result = cbExecuteCommand(selfBuildCmd);
+    int result = ExecuteCommand(selfBuildCmd);
     if (result != 0)
     {
         fprintf(stderr, "Failed to rebuild CBuilder with code: %d\n", result);
@@ -228,124 +228,137 @@ void cbRebuildSelf(void)
     free(selfBuildCmd);
 }
 
-void cbRunSelf(cbString *args)
+void RunSelf(String *args)
 {
-	cbCommand *cmd = cbCreateCommand();
-#ifdef cbPLATFORM_WINDOWS
-	cbAppendToCommand(cmd, "CBuilder.exe");
+	Command *cmd = CreateCommand();
+#ifdef PLATFORM_WINDOWS
+	AppendToCommand(cmd, "CBuilder.exe");
 #else
-	cbAppendToCommand(cmd, "./CBuilder");
+	AppendToCommand(cmd, "./CBuilder");
 #endif
-	cbAppendToCommand(cmd, args->c_str);
+	AppendToCommand(cmd, args->c_str);
 	printf("CMD %s\n", cmd->c_str);
-	cbExecuteCommand(cmd);
+	ExecuteCommand(cmd);
 }
 
-void cbManageRebuild(int argc, char **argv)
+void ManageRebuild(int argc, char **argv)
 {
 	int rebuild = 1;
-	cbString *args = cbCreateString();
+	String *args = CreateString();
 	for (int i = 1; i < argc; i++)
 	{
-		cbAppendToCommand(args, argv[i]);
+		AppendToCommand(args, argv[i]);
 		if (strcmp(argv[i], "NOREBUILD") == 0)
 			rebuild = 0;
 	}
 	if (rebuild)
 	{
-		cbRebuildSelf();
-		cbAppendToCommand(args, "NOREBUILD");
-		cbRunSelf(args);
+		RebuildSelf(); AppendToCommand(args, "NOREBUILD");
+		RunSelf(args);
 		exit(0);
 	}
 }
-void cbManageRules(int argc, char **argv)
+void ManageRules(int argc, char **argv)
 {
 	U8 retValue;
-	cbManageRebuild(argc, argv);
+	ManageRebuild(argc, argv);
 	for (int i = 1; i < argc; i++)
-	{
-		retValue = cbExecuteRule(argv[i]);
-	}
-	if (!retValue && cbRuleCount)
-		cbRules[0].function();
+		retValue = ExecuteRule(argv[i]);
+	if (!retValue && RuleCount)
+		Rules[0].function();
 }
 
 
-void cbAppendCompiler(cbCommand *cmd)
+void AppendCompiler(Command *cmd)
 {
-	#if defined(cbPLATFORM_WINDOWS)
-		cbAppendToCommand(cmd, "msvc");
-	#elif defined(cbPLATFORM_MACOS)
-		cbAppendToCommand(cmd, "clang");
-	#elif defined(cbPLATFORM_LINUX)
-		cbAppendToCommand(cmd, "gcc");
+	#if defined(PLATFORM_WINDOWS)
+		AppendToCommand(cmd, "msvc");
+	#elif defined(PLATFORM_MACOS)
+		AppendToCommand(cmd, "clang");
+	#elif defined(PLATFORM_LINUX)
+		AppendToCommand(cmd, "gcc");
 	#endif
 }
 
-void cbAppendCFLAGS(cbCommand *cmd)
+void AppendCFLAGS(Command *cmd)
 {
-	cbAppendToCommand(cmd, "-framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL");
-	// cbAppendToCommand(cmd, "-Wextra");
-	// cbAppendToCommand(cmd, "-Werror");
+	AppendToCommand(cmd, "-framework CoreVideo -framework CoreAudio ");
+	AppendToCommand(cmd,
+				   "-framework Cocoa",
+				   "-framework IOKit",
+				   "-framework GLUT",
+				   "-framework OpenGL",
+				   "-framework GameController",
+				   "-framework AudioToolbox",
+				   "-framework Metal",
+				   "-framework CoreHaptics",
+				   "-framework ForceFeedback",
+				   "-framework Carbon",
+				   "-framework AVFoundation");
+	
+	AppendToCommand(cmd, "-I extern/SDL-release-2.30.11/include/ ");
+	AppendToCommand(cmd, "-I extern/SDL_mixer-release-2.8.0/include/ ");
+	AppendToCommand(cmd, "-I extern/fftw-3.3.10/api/ ");
+
+	// AppendToCommand(cmd, "-Wextra");
+	// AppendToCommand(cmd, "-Werror");
 }
 
-void cbAppendLDFLAGS(cbCommand *cmd)
+void AppendLDFLAGS(Command *cmd)
 {
-	cbAppendToCommand(cmd, "-L src/include");
+	AppendToCommand(cmd, "-L extern/SDL-release-2.30.11/build/ ");
+	AppendToCommand(cmd, "-L extern/SDL_mixer-release-2.8.0/build/.libs/ ");
+	AppendToCommand(cmd, "-L extern/fftw-3.3.10/.libs/ ");
+
 }
 
-void cbAppendOutput(cbCommand *cmd)
+void AppendOutput(Command *cmd)
 {
-	#if defined(cbPLATFORM_WINDOWS)
-		cbAppendToCommand(cmd, "-o", "TimelineMaker.exe");
-	#elif defined(cbPLATFORM_MACOS)
-		cbAppendToCommand(cmd, "-o", "TimelineMaker");
-	#elif defined(cbPLATFORM_LINUX)
-		cbAppendToCommand(cmd, "-o", "TimelineMaker");
+	#if defined(PLATFORM_WINDOWS)
+		AppendToCommand(cmd, "-o", "TileTimeRythm.exe");
+	#elif defined(PLATFORM_MACOS)
+		AppendToCommand(cmd, "-o", "TileTimeRythm");
+	#elif defined(PLATFORM_LINUX)
+		AppendToCommand(cmd, "-o", "TileTimeRythm");
 	#endif
 
-}
-
-void BuildRaylib(void)
-{
-	cbCommand *buildRaylibCommand = cbCreateCommand();
-	cbAppendToCommand(buildRaylibCommand, "cd src/libs/raylib-5.5/src && make PLATFORM=PLATFORM_DESKTOP");
-	cbExecuteCommand(buildRaylibCommand);
 }
 
 void BuildRule(void)
 {
-	BuildRaylib();
-	cbCommand *buildCommand = cbCreateCommand();
-	cbAppendCompiler(buildCommand);
-	cbAppendToCommand(buildCommand, "src/*.c");
-	cbAppendToCommand(buildCommand, "src/libs/raylib-5.5/src/libraylib.a");
-	cbAppendCFLAGS(buildCommand);
-	cbAppendLDFLAGS(buildCommand);
-	cbAppendOutput(buildCommand);
-	cbExecuteCommand(buildCommand);
+	/* BuildFFTW(); */
+	/* BuildSDL(); */
+	/* BuildSDL_mixer(); */
+	Command *buildCommand = CreateCommand();
+	AppendCompiler(buildCommand);
+	AppendToCommand(buildCommand, "extern/SDL-release-2.30.11/build/libSDL2.a");
+	AppendToCommand(buildCommand, "extern/SDL_mixer-release-2.8.0/build/.libs/libSDL2_mixer.a");
+	AppendToCommand(buildCommand, "extern/fftw-3.3.10/.libs/libfftw3.a");
+	AppendToCommand(buildCommand, "src/*.c");
+	AppendCFLAGS(buildCommand);
+	AppendLDFLAGS(buildCommand);
+	AppendOutput(buildCommand);
+	ExecuteCommand(buildCommand);
 }
 
 void ExecRule(void)
 {
 	BuildRule();
-	cbCommand *execCommand = cbCreateCommand();
-	#if defined(cbPLATFORM_WINDOWS)
-		cbAppendToCommand(execCommand, "TimelineMaker.exe");
+	Command *execCommand = CreateCommand();
+	#if defined(PLATFORM_WINDOWS)
+		AppendToCommand(execCommand, "TileTimeRythm.exe");
 	#else
-		cbAppendToCommand(execCommand, "./TimelineMaker");
+		AppendToCommand(execCommand, "./TileTimeRythm");
 	#endif
-	cbExecuteCommand(execCommand);
+	ExecuteCommand(execCommand);
 }
-
 
 int main(int argc, char **argv)
 {
-	cbCreateRule("build", BuildRule);
-	cbCreateRule("exec", ExecRule);
+	CreateRule("exec", ExecRule);
+	CreateRule("build", BuildRule);
 
-	cbManageRules(argc, argv);
+	ManageRules(argc, argv);
     return 0;
 }
 
